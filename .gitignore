@@ -2,6 +2,7 @@
 logs
 *.log
 npm-debug.log*
+package-lock.json*
 yarn-debug.log*
 yarn-error.log*
 src/dapp/config.json
@@ -37,6 +38,7 @@ bower_components
 build/Release
 build/contracts
 build
+bin
 
 # Dependency directories
 node_modules/
