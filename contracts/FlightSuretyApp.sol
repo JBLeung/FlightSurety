@@ -240,7 +240,7 @@ contract FlightSuretyApp {
                 airline,
                 flight,
                 timestamp,
-                statusCod
+                statusCode
             );
         }
     }
