@@ -4,3 +4,5 @@ reset:
 	rm -Rf ./build; truffle migrate --reset; npm test;
 clean:
 	rm -Rf ./build;rm -Rf ./bin;
+check:
+	solium -d contracts/ --fix;

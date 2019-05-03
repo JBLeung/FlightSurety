@@ -1,0 +1,5 @@
+{
+  "extends": "solium:all",
+  "plugins": ["security"],
+  "rules": {}
+}
