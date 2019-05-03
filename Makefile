@@ -8,3 +8,5 @@ clean:
 	rm -Rf ./build;rm -Rf ./bin;
 check:
 	solium -d contracts/ --fix;
+dapp:
+	npm run dapp;
