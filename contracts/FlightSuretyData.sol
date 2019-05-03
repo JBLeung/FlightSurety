@@ -18,6 +18,10 @@ contract FlightSuretyData {
     /********************************************************************************************/
 
 
+    /********************************************************************************************/
+    /*                                          CONSTRUCTOR                                     */
+    /********************************************************************************************/
+
     /**
     * @dev Constructor
     *      The deploying account becomes contractOwner
@@ -25,6 +29,10 @@ contract FlightSuretyData {
     constructor() public {
         contractOwner = msg.sender;
     }
+
+    /********************************************************************************************/
+    /*                                       FALLBACK FUNCTION                                  */
+    /********************************************************************************************/
 
      /**
     * @dev Fallback function for funding smart contract.
@@ -62,7 +70,7 @@ contract FlightSuretyData {
     }
 
     /********************************************************************************************/
-    /*                                       UTILITY FUNCTIONS                                  */
+    /*                                       EXTERNAL FUNCTIONS                                 */
     /********************************************************************************************/
 
     /**
@@ -103,6 +111,10 @@ contract FlightSuretyData {
     function pay() external pure {
     }
 
+    /********************************************************************************************/
+    /*                                        PUBLIC FUNCTIONS                                  */
+    /********************************************************************************************/
+
     /**
     * @dev Get operating status of contract
     *
@@ -113,10 +125,6 @@ contract FlightSuretyData {
         return operational;
     }
 
-    /********************************************************************************************/
-    /*                                     SMART CONTRACT FUNCTIONS                             */
-    /********************************************************************************************/
-
    /**
     * @dev Initial funding for the insurance. Unless there are too many delayed flights
     *      resulting in insurance payouts, the contract should be self-sustaining
@@ -124,6 +132,10 @@ contract FlightSuretyData {
     */
     function fund() public payable {
     }
+
+    /********************************************************************************************/
+    /*                                        INTERNAL FUNCTIONS                                */
+    /********************************************************************************************/
 
     function getFlightKey(address airline, string memory flight, uint256 timestamp) internal pure returns(bytes32) {
         return keccak256(abi.encodePacked(airline, flight, timestamp));
