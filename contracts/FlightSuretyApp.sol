@@ -18,6 +18,12 @@ contract FlightSuretyApp {
     /*                                       DATA VARIABLES                                     */
     /********************************************************************************************/
 
+    FlightSuretyData private flightSuretyData;
+
+    // app config
+    uint8 constant CONSENSUS_THRESHOLD = 4;
+    uint8 constant MULTI_PART_CONSENSUS_RATE = 2;
+
     // Flight status codees
     uint8 private constant STATUS_CODE_UNKNOWN = 0;
     uint8 private constant STATUS_CODE_ON_TIME = 10;
@@ -120,8 +126,9 @@ contract FlightSuretyApp {
     * @dev Contract constructor
     *
     */
-    constructor() public {
+    constructor(address dataContract) public {
         contractOwner = msg.sender;
+        flightSuretyData = FlightSuretyData(dataContract);
     }
 
     /********************************************************************************************/
@@ -132,8 +139,20 @@ contract FlightSuretyApp {
     * @dev Add an airline to the registration queue
     *
     */
-    function registerAirline() external pure returns(bool success, uint256 votes) {
-        return (success, 0);
+    function registerAirline(address newAirline) external returns(bool success, uint256 votes) {
+        uint256 registeredAirlineCount = flightSuretyData.getRegisteredAirlineCount();
+        if (registeredAirlineCount >= CONSENSUS_THRESHOLD) {
+            votes = flightSuretyData.voteForNewAirline(newAirline);
+            if ((registeredAirlineCount / MULTI_PART_CONSENSUS_RATE) >= votes) {
+                flightSuretyData.registerAirline(newAirline);
+                success = true;
+            }
+        } else {
+            votes = 0;
+            flightSuretyData.registerAirline(newAirline);
+            success = true;
+        }
+        return (success, votes);
     }
 
    /**
@@ -200,8 +219,7 @@ contract FlightSuretyApp {
     ) external
     {
         require(
-            (oracles[msg.sender].indexes[0] == index) || (oracles[msg.sender].indexes[1] == index)
-            || (oracles[msg.sender].indexes[2] == index),
+            (oracles[msg.sender].indexes[0] == index) || (oracles[msg.sender].indexes[1] == index) || (oracles[msg.sender].indexes[2] == index),
             "Index does not match oracle request"
         );
 
@@ -308,4 +326,10 @@ contract FlightSuretyApp {
     }
 
 // endregion
+}
+
+contract FlightSuretyData {
+    function registerAirline(address newAirline) external;
+    function voteForNewAirline(address newAirlineAddress) external returns(uint256 votes);
+    function getRegisteredAirlineCount() external view returns(uint256 count);
 }

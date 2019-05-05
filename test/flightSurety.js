@@ -6,7 +6,7 @@ contract('Flight Surety Tests', async (accounts) => {
   let config
   before('setup contract', async () => {
     config = await Test.Config(accounts)
-    await config.flightSuretyData.authorizeCaller(config.flightSuretyApp.address)
+    await config.flightSuretyData.authorizeContracts(config.flightSuretyApp.address)
   })
 
   /** ************************************************************************************* */
