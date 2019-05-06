@@ -11,12 +11,40 @@ contract FlightSuretyData {
     using SafeMath for uint256;
 
     /********************************************************************************************/
-    /*                                        DATA STRUCT                                       */
+    /*                                      DATA STRUCT & ENUM                                  */
     /********************************************************************************************/
     struct Airline {
         bool isRegistered;
         bool hasPaidFund;
         mapping(address => bool) votedForAirlines;
+    }
+
+    enum FlightStatusCode {
+        Unknow,         // 0
+        OnTime,         // 1
+        LateAirline,    // 2
+        LateWeather,    // 3
+        LateTechnical,  // 4
+        LateOther       // 5
+    }
+
+    struct Flight {
+        bool isFlight;
+        string code;
+        FlightStatusCode statusCode;
+        address airline;
+    }
+
+    struct Insurance {
+        bool isInsurance;
+        bytes32 flightKey;
+        uint256 value;
+        bool isPayout;
+    }
+
+    struct Passenger {
+        bool isPassenger;
+        mapping(bytes32 => Insurance) insurances;
     }
 
     /********************************************************************************************/
@@ -31,6 +59,8 @@ contract FlightSuretyData {
     mapping(address => Airline) private airlines;
     mapping(address => uint256) private registeringAirlines;
 
+    mapping(bytes32 => Flight) private flights;
+    mapping(address => Passenger) private passengers;
 
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
@@ -136,6 +166,8 @@ contract FlightSuretyData {
         delete authorizedContracts[caller];
     }
 
+    // ---  Airline
+
     /**
     * @dev Add an airline to the registration queue
     *      Can only be called from FlightSuretyApp contract
@@ -168,7 +200,7 @@ contract FlightSuretyData {
     function checkAirlineIsPaidFund(address airlineAddress) external view requireAuthorizeContracts requireIsOperational returns(bool) {
         return _airlineIsPaidFund(airlineAddress);
     }
-    
+
     function checkAirlineIsRegistering(address airlineAddress) external view requireAuthorizeContracts requireIsOperational returns(bool) {
         return _airlineIsRegistering(airlineAddress);
     }
@@ -184,25 +216,28 @@ contract FlightSuretyData {
         airlines[callerAirline].hasPaidFund = true;
     }
 
-    /**
-    * @dev Buy insurance for a flight
-    *
-    */
-    function buy() external payable {
+    // ---  Insurance
+
+    // Function: buy insurance
+    function buyInsurance(
+        address passenger,
+        bytes32 flightKey,
+        uint256 amountToPaid
+    )
+    external requireAuthorizeContracts requireIsOperational
+    {
+        bytes32 insuranceKey = getInsuranceKey(passenger, flightKey);
+        passengers[msg.sender].insurances[insuranceKey] = Insurance({
+            isInsurance: true,
+            flightKey: flightKey,
+            value: amountToPaid,
+            isPayout: false
+        });
     }
 
-    /**
-     *  @dev Credits payouts to insurees
-    */
-    function creditInsurees() external pure {
-    }
+    // Function: repayment to passengers who bought insurance
 
-    /**
-     *  @dev Transfers eligible payout funds to insuree
-     *
-    */
-    function pay() external pure {
-    }
+    // Function: passenger withdraw insurance payout
 
     /********************************************************************************************/
     /*                                        PUBLIC FUNCTIONS                                  */
@@ -234,23 +269,28 @@ contract FlightSuretyData {
     /*                                        INTERNAL FUNCTIONS                                */
     /********************************************************************************************/
 
-    function getFlightKey(address airline, string memory flight, uint256 timestamp) internal pure returns(bytes32) {
-        return keccak256(abi.encodePacked(airline, flight, timestamp));
+    function getFlightKey(address airline, string flightCode) internal pure returns(bytes32) {
+        return keccak256(abi.encodePacked(airline, flightCode));
+    }
+
+    function getInsuranceKey(address passenger, bytes32 flightKey) internal pure returns(bytes32) {
+        // return keccak256(abi.encodePacked(passenger, flightKey));
     }
 
     /********************************************************************************************/
     /*                                        PRIVATE FUNCTIONS                                */
     /********************************************************************************************/
 
-    function _airlineIsRegistered(address airlineAddress) private view requireAuthorizeContracts requireIsOperational returns(bool) {
+    // --- Airline
+    function _airlineIsRegistered(address airlineAddress) private view requireIsOperational returns(bool) {
         return (airlines[airlineAddress].isRegistered);
     }
 
-    function _airlineIsPaidFund(address airlineAddress) private view requireAuthorizeContracts requireIsOperational returns(bool) {
+    function _airlineIsPaidFund(address airlineAddress) private view requireIsOperational returns(bool) {
         return (airlines[airlineAddress].hasPaidFund);
     }
 
-    function _airlineIsRegistering(address airlineAddress) private view requireAuthorizeContracts requireIsOperational returns(bool) {
+    function _airlineIsRegistering(address airlineAddress) private view requireIsOperational returns(bool) {
         return (registeringAirlines[airlineAddress] > 0);
     }
 
@@ -266,6 +306,11 @@ contract FlightSuretyData {
 
     function _voteDone(address airlineAddressToVote) private requireIsOperational {
         registeringAirlines[airlineAddressToVote] = 0;
+    }
+
+    // --- flight
+    function _existFlight(bytes32 flightKey) private view requireIsOperational returns(bool){
+        return flights[flightKey].isFlight;
     }
 
 }

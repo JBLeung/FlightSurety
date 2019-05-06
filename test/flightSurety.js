@@ -109,21 +109,17 @@ contract('Flight Surety Tests', async (accounts) => {
     for(let index= 1 ; index < CONSENSUS_THRESHOLD + 1; index ++ ){
       // ACT
       const nextAirline = accounts[index];
-      console.log(`check:001 index`, index)
       try{
         await config.flightSuretyApp.registerAirline(nextAirline, {from: firstAirlineAddress})
-        console.log(`check:001 registerAirline`, index)
       } catch (e) {
         // will fail when index >= CONSENSUS_THRESHOLD
         // ASSERT
-        console.log(`check:001 error`, index)
       }
       // ASSERT
       const nextRegisterResult = await config.flightSuretyData.checkAirlineIsRegisterd.call(nextAirline, {from: contractAddress})
       if(index < CONSENSUS_THRESHOLD){
         assert.equal(nextRegisterResult, true, `Fail to register ${index} airline`)
       }else{
-        console.log(`check:001 in else`, index)
         const isRegistering = await config.flightSuretyData.checkAirlineIsRegistering.call(nextAirline, {from: contractAddress})
         assert.equal(nextRegisterResult, false, `Fail to register ${index} airline`)
         assert.equal(isRegistering, true, `index > CONSENSUS_THRESHOLD should be registering`)

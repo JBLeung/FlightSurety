@@ -26,22 +26,24 @@ contract FlightSuretyApp {
     uint constant JOIN_FEE = 10 ether;
 
     // Flight status codees
-    uint8 private constant STATUS_CODE_UNKNOWN = 0;
-    uint8 private constant STATUS_CODE_ON_TIME = 10;
-    uint8 private constant STATUS_CODE_LATE_AIRLINE = 20;
-    uint8 private constant STATUS_CODE_LATE_WEATHER = 30;
-    uint8 private constant STATUS_CODE_LATE_TECHNICAL = 40;
-    uint8 private constant STATUS_CODE_LATE_OTHER = 50;
+    // enum FlightStatusCode {
+    //     Unknow,         // 0
+    //     OnTime,         // 1
+    //     LateAirline,    // 2
+    //     LateWeather,    // 3
+    //     LateTechnical,  // 4
+    //     LateOther       // 5
+    // }
 
     address private contractOwner;          // Account used to deploy contract
 
-    struct Flight {
-        bool isRegistered;
-        uint8 statusCode;
-        uint256 updatedTimestamp;
-        address airline;
-    }
-    mapping(bytes32 => Flight) private flights;
+    // struct Flight {
+    //     bool isRegistered;
+    //     uint8 statusCode;
+    //     uint256 updatedTimestamp;
+    //     address airline;
+    // }
+    // mapping(bytes32 => Flight) private flights;
 
     /********************************************************************************************/
     /*                                    ORACLE DATA VARIABLES                                 */
