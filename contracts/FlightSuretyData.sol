@@ -23,8 +23,6 @@ contract FlightSuretyData {
     /*                                       DATA VARIABLES                                     */
     /********************************************************************************************/
 
-    uint256 constant JOIN_FEE = 10 ether;
-
     address private contractOwner;                                      // Account used to deploy contract
     bool private operational = true;                                    // Blocks all state changes throughout the contract if false
     mapping(address => bool) private authorizedContracts;
@@ -38,6 +36,8 @@ contract FlightSuretyData {
     /*                                       EVENT DEFINITIONS                                  */
     /********************************************************************************************/
 
+    event Log(string text, uint number);
+
     event AirlineRegistered(address newAirline);
 
     /********************************************************************************************/
@@ -48,11 +48,11 @@ contract FlightSuretyData {
     * @dev Constructor
     *      The deploying account becomes contractOwner
     */
-    constructor() public {
+    constructor(address firstAirline) public {
         contractOwner = msg.sender;
 
-        // init for fist airline
-        _registerAirline(msg.sender);
+        //init for first airline
+        _registerAirline(firstAirline);
     }
 
     /********************************************************************************************/
@@ -97,8 +97,16 @@ contract FlightSuretyData {
         _;
     }
 
-    modifier isAuthorizeAirline(){
-        require(_airlineIsRegistered(msg.sender), "Caller is not authorized, not registed / not paid fund");
+    modifier isAuthorizeAirline(address airlineAddress){
+        require(
+            _airlineIsRegistered(airlineAddress) && _airlineIsPaidFund(airlineAddress),
+            "Caller is not authorized, not registed / not paid fund"
+        );
+        _;
+    }
+
+    modifier isAirline(address airlineAddress){
+        require(airlines[airlineAddress].isRegistered, "Caller is not airline");
         _;
     }
 
@@ -133,20 +141,20 @@ contract FlightSuretyData {
     *      Can only be called from FlightSuretyApp contract
     *
     */
-    function registerAirline(address newAirlineAddress)
-    external requireAuthorizeContracts requireIsOperational isAuthorizeAirline
+    function registerAirline(address newAirlineAddress, address callerAirline)
+    external requireAuthorizeContracts requireIsOperational isAuthorizeAirline(callerAirline)
     {
         _registerAirline(newAirlineAddress);
     }
 
-    function voteForNewAirline(address newAirlineAddress)
-    external requireAuthorizeContracts requireIsOperational isAuthorizeAirline
+    function voteForNewAirline(address airlineAddressToVote, address callerAirline)
+    external requireAuthorizeContracts requireIsOperational isAuthorizeAirline(callerAirline)
     returns(uint256 votes)
     {
-        airlines[msg.sender].votedForAirlines[newAirlineAddress] = true;
-        registeringAirlines[newAirlineAddress] = registeringAirlines[newAirlineAddress].add(1);
+        airlines[callerAirline].votedForAirlines[airlineAddressToVote] = true;
+        registeringAirlines[airlineAddressToVote] = registeringAirlines[airlineAddressToVote].add(1);
 
-        votes = registeringAirlines[newAirlineAddress];
+        votes = registeringAirlines[airlineAddressToVote];
     }
 
     function getRegisteredAirlineCount() external view returns(uint256 count) {
@@ -157,15 +165,23 @@ contract FlightSuretyData {
         return _airlineIsRegistered(airlineAddress);
     }
 
-    function airlinePayFunding() external payable requireIsOperational requireAuthorizeContracts {
-        require(msg.value >= JOIN_FEE, "value is too low, price not met");
-        require(airlines[msg.sender].isRegistered, "Caller is not a registered airline");
-        require(!airlines[msg.sender].hasPaidFund, "Calling airline has already paid their funds");
+    function checkAirlineIsPaidFund(address airlineAddress) external view requireAuthorizeContracts requireIsOperational returns(bool) {
+        return _airlineIsPaidFund(airlineAddress);
+    }
+    
+    function checkAirlineIsRegistering(address airlineAddress) external view requireAuthorizeContracts requireIsOperational returns(bool) {
+        return _airlineIsRegistering(airlineAddress);
+    }
 
-        airlines[msg.sender].hasPaidFund = true;
-
-        uint256 amountToReturn = msg.value - JOIN_FEE;
-        msg.sender.transfer(amountToReturn);
+    function airlinePayFunding(uint joinFee, address callerAirline)
+    external payable
+    requireIsOperational requireAuthorizeContracts isAirline(callerAirline)
+    {
+        require(!airlines[callerAirline].hasPaidFund, "Calling airline has already paid their funds");
+        // require(msg.value >= joinFee, "Not enough ether to pay");
+        // uint256 amountToReturn = msg.value - joinFee;
+        // callerAirline.transfer(amountToReturn);
+        airlines[callerAirline].hasPaidFund = true;
     }
 
     /**
@@ -227,17 +243,29 @@ contract FlightSuretyData {
     /********************************************************************************************/
 
     function _airlineIsRegistered(address airlineAddress) private view requireAuthorizeContracts requireIsOperational returns(bool) {
-        return (airlines[airlineAddress].isRegistered && airlines[airlineAddress].hasPaidFund);
+        return (airlines[airlineAddress].isRegistered);
+    }
+
+    function _airlineIsPaidFund(address airlineAddress) private view requireAuthorizeContracts requireIsOperational returns(bool) {
+        return (airlines[airlineAddress].hasPaidFund);
+    }
+
+    function _airlineIsRegistering(address airlineAddress) private view requireAuthorizeContracts requireIsOperational returns(bool) {
+        return (registeringAirlines[airlineAddress] > 0);
     }
 
     function _registerAirline(address newAirlineAddress)
-    private  requireAuthorizeContracts requireIsOperational
+    private requireIsOperational
     {
         // accept the new register
         airlines[newAirlineAddress].isRegistered = true;
         numberOfRegisteredAirlines = numberOfRegisteredAirlines.add(1);
+        voteDone(newAirlineAddress);
         emit AirlineRegistered(newAirlineAddress);
     }
 
-}
+    function voteDone(address airlineAddressToVote) private requireIsOperational {
+        registeringAirlines[airlineAddressToVote] = 0;
+    }
 
+}

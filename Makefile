@@ -3,7 +3,7 @@ server:
 build:
 	truffle compile;
 reset:
-	rm -Rf ./build; truffle migrate --reset; npm test;
+	rm -Rf ./build; truffle migrate --reset;npm test;
 clean:
 	rm -Rf ./build;rm -Rf ./bin;
 check:

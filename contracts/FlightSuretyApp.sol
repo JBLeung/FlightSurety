@@ -23,6 +23,7 @@ contract FlightSuretyApp {
     // app config
     uint8 constant CONSENSUS_THRESHOLD = 4;
     uint8 constant MULTI_PART_CONSENSUS_RATE = 2;
+    uint constant JOIN_FEE = 10 ether;
 
     // Flight status codees
     uint8 private constant STATUS_CODE_UNKNOWN = 0;
@@ -81,6 +82,8 @@ contract FlightSuretyApp {
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
     /********************************************************************************************/
+
+    event Log(string text, uint number);
 
     // Event fired each time an oracle submits a response
     event FlightStatusInfo(address airline, string flight, uint256 timestamp, uint8 status);
@@ -141,18 +144,23 @@ contract FlightSuretyApp {
     */
     function registerAirline(address newAirline) external returns(bool success, uint256 votes) {
         uint256 registeredAirlineCount = flightSuretyData.getRegisteredAirlineCount();
+        success = false;
         if (registeredAirlineCount >= CONSENSUS_THRESHOLD) {
-            votes = flightSuretyData.voteForNewAirline(newAirline);
-            if ((registeredAirlineCount / MULTI_PART_CONSENSUS_RATE) >= votes) {
-                flightSuretyData.registerAirline(newAirline);
+            votes = flightSuretyData.voteForNewAirline(newAirline, msg.sender);
+            if (votes >= (registeredAirlineCount / MULTI_PART_CONSENSUS_RATE)) {
+                flightSuretyData.registerAirline(newAirline, msg.sender);
                 success = true;
             }
         } else {
             votes = 0;
-            flightSuretyData.registerAirline(newAirline);
+            flightSuretyData.registerAirline(newAirline, msg.sender);
             success = true;
         }
         return (success, votes);
+    }
+
+    function payFunding() external payable {
+        flightSuretyData.airlinePayFunding(JOIN_FEE, msg.sender);
     }
 
    /**
@@ -329,7 +337,8 @@ contract FlightSuretyApp {
 }
 
 contract FlightSuretyData {
-    function registerAirline(address newAirline) external;
-    function voteForNewAirline(address newAirlineAddress) external returns(uint256 votes);
+    function registerAirline(address newAirline, address callerAirline) external;
+    function voteForNewAirline(address newAirlineAddress, address callerAirline) external returns(uint256 votes);
     function getRegisteredAirlineCount() external view returns(uint256 count);
+    function airlinePayFunding(uint joinFee, address callerAirline) external payable;
 }
