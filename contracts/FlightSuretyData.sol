@@ -260,11 +260,11 @@ contract FlightSuretyData {
         // accept the new register
         airlines[newAirlineAddress].isRegistered = true;
         numberOfRegisteredAirlines = numberOfRegisteredAirlines.add(1);
-        voteDone(newAirlineAddress);
+        _voteDone(newAirlineAddress);
         emit AirlineRegistered(newAirlineAddress);
     }
 
-    function voteDone(address airlineAddressToVote) private requireIsOperational {
+    function _voteDone(address airlineAddressToVote) private requireIsOperational {
         registeringAirlines[airlineAddressToVote] = 0;
     }
 
