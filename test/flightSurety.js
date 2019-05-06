@@ -93,20 +93,24 @@ contract('Flight Surety Tests', async (accounts) => {
   it('(airline) pay fund for 1st airline', async () => {
     // ARRANGE
     // ACT
+    // ACT
     const resultBefore = await config.flightSuretyData.checkAirlineIsPaidFund(firstAirlineAddress, {from: contractAddress})
     const isFirstAirlineRegistered = await config.flightSuretyData.checkAirlineIsRegisterd(firstAirlineAddress, {from: contractAddress})
     await config.flightSuretyApp.payFunding({from:firstAirlineAddress, value: minFund})
     const resultAfter = await config.flightSuretyData.checkAirlineIsPaidFund(firstAirlineAddress, {from: contractAddress})
+    const airlineBalance = await config.flightSuretyData.checkAirlineBalance({from: contractAddress})
 
     // ASSERT
+    assert.equal(airlineBalance, minFund, "airlineBalance should equale to minFund as 1st airline paying fund")
     assert.equal(resultBefore, false, "Airline already is paid fund")
     assert.equal(isFirstAirlineRegistered, true, "1st airline did not register")
-    assert.equal(resultAfter, true, "Canot pay fund for registered airline")
+    assert.equal(resultAfter, true, "Fail to pay fund for registered airline")
   })
 
   it('(airline) without Multiparty Consensus with registered airline less then CONSENSUS_THRESHOLD', async () => {
-    // ARRANGE
-    for(let index= 1 ; index < CONSENSUS_THRESHOLD + 1; index ++ ){
+    // take accounts 2 - 5 for testing
+    for(let index= 2 ; index < CONSENSUS_THRESHOLD + 2; index ++ ){
+      const numberOfRegisteredAirlines = await config.flightSuretyData.getRegisteredAirlineCount.call({from: contractAddress})
       // ACT
       const nextAirline = accounts[index];
       try{
@@ -116,12 +120,13 @@ contract('Flight Surety Tests', async (accounts) => {
         // ASSERT
       }
       // ASSERT
+      const numberOfreg = await config.flightSuretyData.getRegisteredAirlineCount.call({from: contractAddress})
       const nextRegisterResult = await config.flightSuretyData.checkAirlineIsRegisterd.call(nextAirline, {from: contractAddress})
-      if(index < CONSENSUS_THRESHOLD){
+      if(numberOfRegisteredAirlines < CONSENSUS_THRESHOLD){
         assert.equal(nextRegisterResult, true, `Fail to register ${index} airline`)
       }else{
         const isRegistering = await config.flightSuretyData.checkAirlineIsRegistering.call(nextAirline, {from: contractAddress})
-        assert.equal(nextRegisterResult, false, `Fail to register ${index} airline`)
+        assert.equal(nextRegisterResult, false, `Should fail to register ${index} airline`)
         assert.equal(isRegistering, true, `index > CONSENSUS_THRESHOLD should be registering`)
       }
     }
@@ -129,7 +134,7 @@ contract('Flight Surety Tests', async (accounts) => {
   
   it('(airline) Multiparty Consensus is work on registering new airline', async () => {
     // ARRANGE
-    const fourthAirlineAddress = accounts[4]
+    const fourthAirlineAddress = accounts[5]
     // ACT
     const beforeIsNotRegistered = await config.flightSuretyData.checkAirlineIsRegisterd.call(fourthAirlineAddress, {from: contractAddress})
     const beforeIsRegistering = await config.flightSuretyData.checkAirlineIsRegistering.call(fourthAirlineAddress, {from: contractAddress})
@@ -145,6 +150,23 @@ contract('Flight Surety Tests', async (accounts) => {
     assert.equal(afterRegisterResult, true, `Fail to register 4th airline`)
     assert.equal(afterIsRegistering, false, `4th airline should be registering done`)
 
+  })
+
+  it('(airline) all airline pay fund - total 5 registed airline', async () => {
+    for(let index= 2 ; index < CONSENSUS_THRESHOLD + 2; index ++ ){
+      // ACT
+      const registerResult = await config.flightSuretyData.checkAirlineIsRegisterd(accounts[index], {from: contractAddress})
+      const payFundResult = await config.flightSuretyData.checkAirlineIsPaidFund(accounts[index], {from: contractAddress})
+      if(registerResult && !payFundResult){
+        await config.flightSuretyApp.payFunding({from:accounts[index], value: minFund})
+        const afterPayFundResult = await config.flightSuretyData.checkAirlineIsPaidFund(accounts[index], {from: contractAddress})
+        // ASSERT
+        assert.equal(afterPayFundResult, true, "Fail to pay fund for registered airline")
+      }
+    }
+    const airlineBalance = await config.flightSuretyData.checkAirlineBalance({from: contractAddress})
+    // ASSERT
+    assert.equal(airlineBalance, minFund * 5, "There should be 5 airline registed, with 5 * minFund")
   })
   // it('', async () => {
   //   // ARRANGE

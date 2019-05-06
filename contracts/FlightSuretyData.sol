@@ -62,6 +62,8 @@ contract FlightSuretyData {
     mapping(bytes32 => Flight) private flights;
     mapping(address => Passenger) private passengers;
 
+    uint256 private airlineBalance = 0;
+
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
     /********************************************************************************************/
@@ -140,6 +142,11 @@ contract FlightSuretyData {
         _;
     }
 
+    modifier payableIsPositiveValue(uint256 value){
+        require(value > 0, "payable value must be positive");
+        _;
+    }
+
 
     /********************************************************************************************/
     /*                                       EXTERNAL FUNCTIONS                                 */
@@ -205,14 +212,16 @@ contract FlightSuretyData {
         return _airlineIsRegistering(airlineAddress);
     }
 
-    function airlinePayFunding(uint joinFee, address callerAirline)
+    function checkAirlineBalance() external view requireAuthorizeContracts requireIsOperational returns(uint256) {
+        return airlineBalance;
+    }
+
+    function airlinePaidFunding(address callerAirline)
     external payable
-    requireIsOperational requireAuthorizeContracts isAirline(callerAirline)
+    requireIsOperational requireAuthorizeContracts isAirline(callerAirline) payableIsPositiveValue(msg.value)
     {
         require(!airlines[callerAirline].hasPaidFund, "Calling airline has already paid their funds");
-        // require(msg.value >= joinFee, "Not enough ether to pay");
-        // uint256 amountToReturn = msg.value - joinFee;
-        // callerAirline.transfer(amountToReturn);
+        airlineBalance = airlineBalance.add(msg.value);
         airlines[callerAirline].hasPaidFund = true;
     }
 

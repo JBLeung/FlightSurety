@@ -162,7 +162,10 @@ contract FlightSuretyApp {
     }
 
     function payFunding() external payable {
-        flightSuretyData.airlinePayFunding(JOIN_FEE, msg.sender);
+        require(msg.value >= JOIN_FEE, "Not enough ether to pay");
+        uint256 amountToReturn = msg.value - JOIN_FEE;
+        flightSuretyData.airlinePaidFunding.value(JOIN_FEE)(msg.sender);
+        msg.sender.transfer(amountToReturn);
     }
 
    /**
@@ -342,5 +345,5 @@ contract FlightSuretyData {
     function registerAirline(address newAirline, address callerAirline) external;
     function voteForNewAirline(address newAirlineAddress, address callerAirline) external returns(uint256 votes);
     function getRegisteredAirlineCount() external view returns(uint256 count);
-    function airlinePayFunding(uint joinFee, address callerAirline) external payable;
+    function airlinePaidFunding(address callerAirline) external payable;
 }
