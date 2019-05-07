@@ -6,7 +6,7 @@
   "parserOptions": {
     "parser": "babel-eslint",
     "sourceType": "module",
-    "ecmaVersion": 6
+    "ecmaVersion": 2017
   },
   "rules" : {
     "func-names": 0,
@@ -28,7 +28,12 @@
     "arrow-body-style": ["error", "as-needed"]
   },
   "globals":{
-    "artifacts": true
+    "artifacts": true,
+    "web3": true,
+    "contract": true,
+    "before": true,
+    "it": true,
+    "assert": true
   },
   "env": { "es6": true }
 }
