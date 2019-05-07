@@ -8,10 +8,12 @@ const minFund = web3.utils.toWei('10', 'ether')
 contract('Flight Surety Tests', async (accounts) => {
   let config
   let contractAddress
+  let contractOwnerAddress
   const airlineAddresses = []
   before('setup contract', async () => {
     config = await Test.Config(accounts)
     contractAddress = config.flightSuretyApp.address
+    contractOwnerAddress = config.testAddresses[2]
 
     if (airlineAddresses.length === 0) {
       const [,, secondAirlineAddress, thridAirlineAddress, fourthAirlineAddress, fifthAirlineAddress] = accounts
@@ -39,7 +41,7 @@ contract('Flight Surety Tests', async (accounts) => {
     // Ensure that access is denied for non-Contract Owner account
     let accessDenied = false
     try {
-      await config.flightSuretyData.setOperatingStatus(false, { from: config.testAddresses[2] })
+      await config.flightSuretyData.setOperatingStatus(false, { from: contractOwnerAddress })
     } catch (e) {
       accessDenied = true
     }
@@ -197,6 +199,20 @@ contract('Flight Surety Tests', async (accounts) => {
     const airlineBalance = await config.flightSuretyData.checkAirlineBalance({from: contractAddress})
     assert.equal(airlineBalance, minFund * 4, 'There should be 5 airline registed, with 5 * minFund')
     assert.equal(web3.utils.fromWei(airlineBalance, 'ether'), 40, 'There should be 5 airline registed, with 5 * minFund')
+  })
+
+  it('(flight) register a flight', async () => {
+    // ARRANGE
+    const flightCode = 'ND1309'
+    const airlineAddress = airlineAddresses[1]
+    // ACT
+    const flightKey = await config.flightSuretyData.getFlightKey(airlineAddress, flightCode, {from: contractAddress})
+    const beforeFlightRegistered = await config.flightSuretyData.checkIsFlight(flightKey, {from: contractAddress})
+    await config.flightSuretyApp.registerFlight(flightCode, {from: airlineAddress})
+    const isFlightRegistered = await config.flightSuretyData.checkIsFlight(flightKey, {from: contractAddress})
+    // ASSERT
+    assert.equal(beforeFlightRegistered, false, 'Flight is registered before')
+    assert.equal(isFlightRegistered, true, 'Cannot register flight')
   })
 
   // it('(insurance) buy Insurance', async () => {

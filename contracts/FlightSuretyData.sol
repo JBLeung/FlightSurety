@@ -147,7 +147,6 @@ contract FlightSuretyData {
         _;
     }
 
-
     /********************************************************************************************/
     /*                                       EXTERNAL FUNCTIONS                                 */
     /********************************************************************************************/
@@ -196,9 +195,21 @@ contract FlightSuretyData {
         votes = registeringAirlines[airlineAddressToVote];
     }
 
+    // -- Flight
+    function getFlightKey(address airline, string flightCode) external view
+    requireAuthorizeContracts requireIsOperational
+    returns(bytes32)
+    {
+        return _getFlightKey(airline, flightCode);
+    }
+
+    // -- Getter
+
     function getRegisteredAirlineCount() external view returns(uint256 count) {
         count = numberOfRegisteredAirlines;
     }
+
+    // -- Checker
 
     function checkAirlineIsRegisterd(address airlineAddress) external view requireAuthorizeContracts requireIsOperational returns(bool) {
         return _airlineIsRegistered(airlineAddress);
@@ -216,6 +227,10 @@ contract FlightSuretyData {
         return airlineBalance;
     }
 
+    function checkIsFlight(bytes32 flightKey) external view requireAuthorizeContracts requireIsOperational returns(bool) {
+        return _existFlight(flightKey);
+    }
+
     function airlinePaidFunding(address callerAirline)
     external payable
     requireIsOperational requireAuthorizeContracts isAirline(callerAirline) payableIsPositiveValue(msg.value)
@@ -228,14 +243,11 @@ contract FlightSuretyData {
     // ---  Insurance
 
     // Function: buy insurance
-    function buyInsurance(
-        address passenger,
-        bytes32 flightKey,
-        uint256 amountToPaid
-    )
+    function buyInsurance(address passenger, bytes32 flightKey, uint256 amountToPaid)
     external requireAuthorizeContracts requireIsOperational
     {
-        bytes32 insuranceKey = getInsuranceKey(passenger, flightKey);
+        bytes32 insuranceKey = _getInsuranceKey(passenger, flightKey);
+        require(passengers[msg.sender].insurances[insuranceKey].isInsurance == false, "Cannot buy same insurance twice");
         passengers[msg.sender].insurances[insuranceKey] = Insurance({
             isInsurance: true,
             flightKey: flightKey,
@@ -247,6 +259,19 @@ contract FlightSuretyData {
     // Function: repayment to passengers who bought insurance
 
     // Function: passenger withdraw insurance payout
+
+    // -- Flight
+    function registerFlight(string flightCode, address callerAirline)
+    external requireAuthorizeContracts requireIsOperational isAirline(callerAirline)
+    {
+        bytes32 flightKey = _getFlightKey(callerAirline, flightCode);
+        flights[flightKey] = Flight({
+            isFlight: true,
+            code:flightCode,
+            statusCode:FlightStatusCode.Unknow,
+            airline: msg.sender
+        });
+    }
 
     /********************************************************************************************/
     /*                                        PUBLIC FUNCTIONS                                  */
@@ -278,12 +303,12 @@ contract FlightSuretyData {
     /*                                        INTERNAL FUNCTIONS                                */
     /********************************************************************************************/
 
-    function getFlightKey(address airline, string flightCode) internal pure returns(bytes32) {
+    function _getFlightKey(address airline, string flightCode) internal pure returns(bytes32) {
         return keccak256(abi.encodePacked(airline, flightCode));
     }
 
-    function getInsuranceKey(address passenger, bytes32 flightKey) internal pure returns(bytes32) {
-        // return keccak256(abi.encodePacked(passenger, flightKey));
+    function _getInsuranceKey(address passenger, bytes32 flightKey) internal pure returns(bytes32) {
+        return keccak256(abi.encodePacked(passenger, flightKey));
     }
 
     /********************************************************************************************/

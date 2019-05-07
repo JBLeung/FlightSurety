@@ -172,8 +172,9 @@ contract FlightSuretyApp {
     * @dev Register a future flight for insuring.
     *
     */
-    function registerFlight() external pure {
-
+    function registerFlight(string flightCode) external {
+        require(flightSuretyData.checkIsFlight(getFlightKey(msg.sender, flightCode)) == false, "Flight already registered");
+        flightSuretyData.registerFlight(flightCode, msg.sender);
     }
 
     // Generate a request for oracles to fetch flight information
@@ -302,8 +303,12 @@ contract FlightSuretyApp {
 
     }
 
-    function getFlightKey(address airline, string flight, uint256 timestamp) internal pure returns(bytes32) {
-        return keccak256(abi.encodePacked(airline, flight, timestamp));
+    function getFlightKey(address airline, string flightCode) internal pure returns(bytes32) {
+        return keccak256(abi.encodePacked(airline, flightCode));
+    }
+
+    function getInsuranceKey(address passenger, bytes32 flightKey) internal pure returns(bytes32) {
+        return keccak256(abi.encodePacked(passenger, flightKey));
     }
 
     // Returns array of three non-duplicating integers from 0-9
@@ -342,8 +347,14 @@ contract FlightSuretyApp {
 }
 
 contract FlightSuretyData {
+    // -- Airline
     function registerAirline(address newAirline, address callerAirline) external;
     function voteForNewAirline(address newAirlineAddress, address callerAirline) external returns(uint256 votes);
     function getRegisteredAirlineCount() external view returns(uint256 count);
     function airlinePaidFunding(address callerAirline) external payable;
+    // -- Flight
+    function registerFlight(string flightCode, address callerAirline) external;
+    function checkIsFlight(bytes32 flightKey) external view returns(bool);
+    // -- Insurance
+    function buyInsurance(address passenger, bytes32 flightKey, uint256 amountToPaid) external;
 }
