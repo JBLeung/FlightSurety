@@ -172,9 +172,9 @@ contract FlightSuretyApp {
     * @dev Register a future flight for insuring.
     *
     */
-    function registerFlight(string flightCode) external {
-        require(flightSuretyData.checkIsFlight(getFlightKey(msg.sender, flightCode)) == false, "Flight already registered");
-        flightSuretyData.registerFlight(flightCode, msg.sender);
+    function registerFlight(string flightCode, uint256 timestamp) external {
+        require(flightSuretyData.checkIsFlight(getFlightKey(msg.sender, flightCode, timestamp)) == false, "Flight already registered");
+        flightSuretyData.registerFlight(flightCode, timestamp, msg.sender);
     }
 
     // Generate a request for oracles to fetch flight information
@@ -303,8 +303,8 @@ contract FlightSuretyApp {
 
     }
 
-    function getFlightKey(address airline, string flightCode) internal pure returns(bytes32) {
-        return keccak256(abi.encodePacked(airline, flightCode));
+    function getFlightKey(address airline, string flightCode, uint256 timestamp) internal pure returns(bytes32) {
+        return keccak256(abi.encodePacked(airline, flightCode, timestamp));
     }
 
     function getInsuranceKey(address passenger, bytes32 flightKey) internal pure returns(bytes32) {
@@ -353,7 +353,7 @@ contract FlightSuretyData {
     function getRegisteredAirlineCount() external view returns(uint256 count);
     function airlinePaidFunding(address callerAirline) external payable;
     // -- Flight
-    function registerFlight(string flightCode, address callerAirline) external;
+    function registerFlight(string flightCode, uint256 timestamp, address callerAirline) external;
     function checkIsFlight(bytes32 flightKey) external view returns(bool);
     // -- Insurance
     function buyInsurance(address passenger, bytes32 flightKey, uint256 amountToPaid) external;

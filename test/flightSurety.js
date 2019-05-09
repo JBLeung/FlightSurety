@@ -204,11 +204,12 @@ contract('Flight Surety Tests', async (accounts) => {
   it('(flight) register a flight', async () => {
     // ARRANGE
     const flightCode = 'ND1309'
+    const timestamp =  Math.floor(Date.now() / 1000)
     const airlineAddress = airlineAddresses[1]
     // ACT
-    const flightKey = await config.flightSuretyData.getFlightKey(airlineAddress, flightCode, {from: contractAddress})
+    const flightKey = await config.flightSuretyData.getFlightKey(airlineAddress, flightCode, timestamp, {from: contractAddress})
     const beforeFlightRegistered = await config.flightSuretyData.checkIsFlight(flightKey, {from: contractAddress})
-    await config.flightSuretyApp.registerFlight(flightCode, {from: airlineAddress})
+    await config.flightSuretyApp.registerFlight(flightCode, timestamp, {from: airlineAddress})
     const isFlightRegistered = await config.flightSuretyData.checkIsFlight(flightKey, {from: contractAddress})
     // ASSERT
     assert.equal(beforeFlightRegistered, false, 'Flight is registered before')

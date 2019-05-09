@@ -31,6 +31,7 @@ contract FlightSuretyData {
     struct Flight {
         bool isFlight;
         string code;
+        uint256 timestamp;
         FlightStatusCode statusCode;
         address airline;
     }
@@ -196,11 +197,11 @@ contract FlightSuretyData {
     }
 
     // -- Flight
-    function getFlightKey(address airline, string flightCode) external view
+    function getFlightKey(address airline, string flightCode, uint256 timestamp) external view
     requireAuthorizeContracts requireIsOperational
     returns(bytes32)
     {
-        return _getFlightKey(airline, flightCode);
+        return _getFlightKey(airline, flightCode, timestamp);
     }
 
     // -- Getter
@@ -261,13 +262,14 @@ contract FlightSuretyData {
     // Function: passenger withdraw insurance payout
 
     // -- Flight
-    function registerFlight(string flightCode, address callerAirline)
+    function registerFlight(string flightCode, uint256 timestamp, address callerAirline)
     external requireAuthorizeContracts requireIsOperational isAirline(callerAirline)
     {
-        bytes32 flightKey = _getFlightKey(callerAirline, flightCode);
+        bytes32 flightKey = _getFlightKey(callerAirline, flightCode, timestamp);
         flights[flightKey] = Flight({
             isFlight: true,
             code:flightCode,
+            timestamp: timestamp,
             statusCode:FlightStatusCode.Unknow,
             airline: msg.sender
         });
@@ -303,8 +305,8 @@ contract FlightSuretyData {
     /*                                        INTERNAL FUNCTIONS                                */
     /********************************************************************************************/
 
-    function _getFlightKey(address airline, string flightCode) internal pure returns(bytes32) {
-        return keccak256(abi.encodePacked(airline, flightCode));
+    function _getFlightKey(address airline, string flightCode, uint256 timestamp) internal pure returns(bytes32) {
+        return keccak256(abi.encodePacked(airline, flightCode, timestamp));
     }
 
     function _getInsuranceKey(address passenger, bytes32 flightKey) internal pure returns(bytes32) {
