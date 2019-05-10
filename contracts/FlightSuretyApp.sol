@@ -27,14 +27,14 @@ contract FlightSuretyApp {
     uint constant MAX_INSURANCE_AMOUNT = 1 ether;
 
     // Flight status codees
-    // enum FlightStatusCode {
-    //     Unknow,         // 0
-    //     OnTime,         // 1
-    //     LateAirline,    // 2
-    //     LateWeather,    // 3
-    //     LateTechnical,  // 4
-    //     LateOther       // 5
-    // }
+    enum FlightStatusCode {
+        Unknow,         // 0
+        OnTime,         // 1
+        LateAirline,    // 2
+        LateWeather,    // 3
+        LateTechnical,  // 4
+        LateOther       // 5
+    }
 
     address private contractOwner;          // Account used to deploy contract
 
@@ -169,6 +169,7 @@ contract FlightSuretyApp {
         msg.sender.transfer(amountToReturn);
     }
 
+    // -- Flight
    /**
     * @dev Register a future flight for insuring.
     *
@@ -199,6 +200,17 @@ contract FlightSuretyApp {
             airline,
             flight,
             timestamp
+        );
+    }
+
+    function updateFlightStatus(string flightCode, uint256 timestamp, FlightStatusCode statusCode) external {
+        bytes32 flightKey = getFlightKey(msg.sender, flightCode, timestamp);
+        require(flightSuretyData.checkIsFlight(flightKey), "Flight code is not valid");
+        flightSuretyData.setFlightStatus(
+            flightCode,
+            timestamp,
+            uint8(statusCode),
+            msg.sender
         );
     }
 
@@ -383,6 +395,12 @@ contract FlightSuretyData {
     // -- Flight
     function registerFlight(string flightCode, uint256 timestamp, address callerAirline) external;
     function checkIsFlight(bytes32 flightKey) external view returns(bool);
+    function setFlightStatus(
+        string flightCode,
+        uint256 timestamp,
+        uint8 statusCode,
+        address callerAirline) external;
+
     // -- Insurance
     function buyInsurance(address passenger, bytes32 flightKey, uint256 amountToPaid) external payable;
     function checkInsuranceAmount(bytes32 flightKey, address callerPassenger)external view returns(uint256);

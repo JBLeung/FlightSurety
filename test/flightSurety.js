@@ -241,6 +241,35 @@ contract('Flight Surety Tests', async (accounts) => {
     // ASSERT
     assert.equal(web3.utils.fromWei(insuranceAmmount, 'ether') > 0, true, 'Passanger insurance amount is less then 0')
   })
+
+  it('(flight) update flight status to delay', async () => {
+    // ARRANGE
+    const flightDelayStatusCode = 2
+    const {flightCode, timestamp, airlineAddress} = flightDataArray[0]
+
+    // ACT
+    const flightStatusBeforeUpdate = await config.flightSuretyData.getFlightStatus(airlineAddress, flightCode, timestamp, {from: contractAddress})
+    await config.flightSuretyApp.updateFlightStatus(flightCode, timestamp, flightDelayStatusCode, {from: airlineAddress})
+    const updatedFlightStatus = await config.flightSuretyData.getFlightStatus(airlineAddress, flightCode, timestamp, {from: contractAddress})
+    // ASSERT
+    assert.equal(flightStatusBeforeUpdate, 0, 'Status should be 0')
+    assert.notEqual(flightStatusBeforeUpdate, flightDelayStatusCode, 'Status should equal to flightDelayStatusCode')
+    assert.equal(updatedFlightStatus, flightDelayStatusCode, 'Status should be flightDelayStatusCode')
+  })
+
+  // it('(insurance) passenger receives credit of insurance payout', async () => {
+  //   // ARRANGE
+  //   // ACT
+  //   // ASSERT
+  // })
+
+  // it('(insurance) passenger withdraw funds', async () => {
+  //   // ARRANGE
+  //   // ACT
+  //   // ASSERT
+  // })
+
+
   // it('', async () => {
   //   // ARRANGE
   //   // ACT

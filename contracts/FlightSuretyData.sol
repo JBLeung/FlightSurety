@@ -19,20 +19,11 @@ contract FlightSuretyData {
         mapping(address => bool) votedForAirlines;
     }
 
-    enum FlightStatusCode {
-        Unknow,         // 0
-        OnTime,         // 1
-        LateAirline,    // 2
-        LateWeather,    // 3
-        LateTechnical,  // 4
-        LateOther       // 5
-    }
-
     struct Flight {
         bool isFlight;
         string code;
         uint256 timestamp;
-        FlightStatusCode statusCode;
+        uint8 statusCode;
         address airline;
     }
 
@@ -209,6 +200,14 @@ contract FlightSuretyData {
         return _getFlightKey(airline, flightCode, timestamp);
     }
 
+    function getFlightStatus(address airline, string flightCode, uint256 timestamp) external view
+    requireAuthorizeContracts requireIsOperational returns(uint8)
+    {
+        bytes32 flightKey = _getFlightKey(airline, flightCode, timestamp);
+        require(_existFlight(flightKey), "Is not a valid flight");
+        return flights[flightKey].statusCode;
+    }
+
     //  -- Insurance
     function getInsuranceKey(address passenger, bytes32 flightKey) external view
     requireAuthorizeContracts requireIsOperational
@@ -293,9 +292,22 @@ contract FlightSuretyData {
             isFlight: true,
             code:flightCode,
             timestamp: timestamp,
-            statusCode:FlightStatusCode.Unknow,
+            statusCode: 0,
             airline: msg.sender
         });
+    }
+
+    function setFlightStatus(
+        string flightCode,
+        uint256 timestamp,
+        uint8 statusCode,
+        address callerAirline
+    )
+    external requireAuthorizeContracts requireIsOperational isAirline(callerAirline)
+    {
+        bytes32 flightKey = _getFlightKey(callerAirline, flightCode, timestamp);
+        require(_existFlight(flightKey), "Flight not exist");
+        flights[flightKey].statusCode = statusCode;
     }
 
     /********************************************************************************************/
