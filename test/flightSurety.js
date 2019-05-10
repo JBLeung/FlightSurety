@@ -5,24 +5,39 @@ const Test = require('../config/testConfig.js')
 const CONSENSUS_THRESHOLD = 4
 const minFund = web3.utils.toWei('10', 'ether')
 
+// flight data
+
+
 contract('Flight Surety Tests', async (accounts) => {
   let config
   let contractAddress
   let contractOwnerAddress
+  let flightDataArray
   const airlineAddresses = []
+  const passengerAddresses = []
   before('setup contract', async () => {
     config = await Test.Config(accounts)
     contractAddress = config.flightSuretyApp.address
     contractOwnerAddress = config.testAddresses[2]
 
-    if (airlineAddresses.length === 0) {
-      const [,, secondAirlineAddress, thridAirlineAddress, fourthAirlineAddress, fifthAirlineAddress] = accounts
+    if (airlineAddresses.length === 0 && passengerAddresses.length === 0) {
+      const [,, secondAirlineAddress, thridAirlineAddress, fourthAirlineAddress, fifthAirlineAddress, firstPassenger] = accounts
+      // airline
       airlineAddresses.push(config.firstAirline)
       airlineAddresses.push(secondAirlineAddress)
       airlineAddresses.push(thridAirlineAddress)
       airlineAddresses.push(fourthAirlineAddress)
       airlineAddresses.push(fifthAirlineAddress)
+
+      // passenger
+      passengerAddresses.push(firstPassenger)
     }
+
+    flightDataArray = [{
+      flightCode: 'ND1309',
+      timestamp: Math.floor(Date.now() / 1000),
+      airlineAddress: airlineAddresses[1],
+    }]
 
     await config.flightSuretyData.authorizeContracts(contractAddress)
   })
@@ -203,9 +218,7 @@ contract('Flight Surety Tests', async (accounts) => {
 
   it('(flight) register a flight', async () => {
     // ARRANGE
-    const flightCode = 'ND1309'
-    const timestamp =  Math.floor(Date.now() / 1000)
-    const airlineAddress = airlineAddresses[1]
+    const {flightCode, timestamp, airlineAddress} = flightDataArray[0]
     // ACT
     const flightKey = await config.flightSuretyData.getFlightKey(airlineAddress, flightCode, timestamp, {from: contractAddress})
     const beforeFlightRegistered = await config.flightSuretyData.checkIsFlight(flightKey, {from: contractAddress})
@@ -216,11 +229,18 @@ contract('Flight Surety Tests', async (accounts) => {
     assert.equal(isFlightRegistered, true, 'Cannot register flight')
   })
 
-  // it('(insurance) buy Insurance', async () => {
-  //   // ARRANGE
-  //   // ACT
-  //   // ASSERT
-  // })
+  it('(insurance) buy Insurance', async () => {
+    // ARRANGE
+    const {flightCode, timestamp, airlineAddress} = flightDataArray[0]
+    const passengerAddress = passengerAddresses[0]
+    const amountToPaid = web3.utils.toWei('1', 'ether')
+    // ACT
+    await config.flightSuretyApp.buyInsurance(passengerAddress, airlineAddress, flightCode, timestamp, amountToPaid, {from: passengerAddress, value: amountToPaid})
+    const insuranceAmmount = await config.flightSuretyApp.checkInsuranceAmount(airlineAddress, flightCode, timestamp, {from: passengerAddress})
+
+    // ASSERT
+    assert.equal(web3.utils.fromWei(insuranceAmmount, 'ether') > 0, true, 'Passanger insurance amount is less then 0')
+  })
   // it('', async () => {
   //   // ARRANGE
   //   // ACT

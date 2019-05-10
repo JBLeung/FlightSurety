@@ -148,6 +148,11 @@ contract FlightSuretyData {
         _;
     }
 
+    modifier isPassenger(address passenger){
+        require(_isPassenger(passenger), "Callis is not passenger");
+        _;
+    }
+
     /********************************************************************************************/
     /*                                       EXTERNAL FUNCTIONS                                 */
     /********************************************************************************************/
@@ -204,6 +209,14 @@ contract FlightSuretyData {
         return _getFlightKey(airline, flightCode, timestamp);
     }
 
+    //  -- Insurance
+    function getInsuranceKey(address passenger, bytes32 flightKey) external view
+    requireAuthorizeContracts requireIsOperational
+    returns(bytes32)
+    {
+        return _getInsuranceKey(passenger, flightKey);
+    }
+
     // -- Getter
 
     function getRegisteredAirlineCount() external view returns(uint256 count) {
@@ -245,16 +258,26 @@ contract FlightSuretyData {
 
     // Function: buy insurance
     function buyInsurance(address passenger, bytes32 flightKey, uint256 amountToPaid)
-    external requireAuthorizeContracts requireIsOperational
+    external payable requireAuthorizeContracts requireIsOperational
     {
         bytes32 insuranceKey = _getInsuranceKey(passenger, flightKey);
-        require(passengers[msg.sender].insurances[insuranceKey].isInsurance == false, "Cannot buy same insurance twice");
-        passengers[msg.sender].insurances[insuranceKey] = Insurance({
+        require(passengers[passenger].insurances[insuranceKey].isInsurance == false, "Cannot buy same insurance twice");
+        passengers[passenger].isPassenger = true;
+        passengers[passenger].insurances[insuranceKey] = Insurance({
             isInsurance: true,
             flightKey: flightKey,
             value: amountToPaid,
             isPayout: false
         });
+    }
+
+    // Function: get passenger Insurance record
+    function checkInsuranceAmount(bytes32 flightKey, address callerPassenger)
+    external view
+    requireAuthorizeContracts requireIsOperational isPassenger(callerPassenger) returns(uint256)
+    {
+        bytes32 insuranceKey = _getInsuranceKey(callerPassenger, flightKey);
+        return passengers[callerPassenger].insurances[insuranceKey].value;
     }
 
     // Function: repayment to passengers who bought insurance
@@ -347,6 +370,11 @@ contract FlightSuretyData {
     // --- flight
     function _existFlight(bytes32 flightKey) private view requireIsOperational returns(bool){
         return flights[flightKey].isFlight;
+    }
+
+    // -- Passenger
+    function _isPassenger(address passenger) private view requireIsOperational returns(bool){
+        return passengers[passenger].isPassenger;
     }
 
 }

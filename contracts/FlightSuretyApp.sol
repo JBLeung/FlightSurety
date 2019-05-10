@@ -24,6 +24,7 @@ contract FlightSuretyApp {
     uint8 constant CONSENSUS_THRESHOLD = 4;
     uint8 constant MULTI_PART_CONSENSUS_RATE = 2;
     uint constant JOIN_FEE = 10 ether;
+    uint constant MAX_INSURANCE_AMOUNT = 1 ether;
 
     // Flight status codees
     // enum FlightStatusCode {
@@ -201,6 +202,32 @@ contract FlightSuretyApp {
         );
     }
 
+    // -- Insurance
+    function buyInsurance(
+        address passenger,
+        address airline,
+        string flightCode,
+        uint256 timestamp,
+        uint256 amountToPaid
+    ) external payable
+    {
+        require(flightSuretyData.checkAirlineIsRegisterd(passenger) == false, "Airline cannot buy insurance");
+        require(flightSuretyData.checkAirlineIsRegisterd(airline), "airline address incorrect");
+        bytes32 flightKey = getFlightKey(airline, flightCode,  timestamp);
+        require(flightSuretyData.checkIsFlight(flightKey), "Flight not exisit");
+        require(amountToPaid > 0, "Insurance amount must > 0");
+        require(amountToPaid <= MAX_INSURANCE_AMOUNT, "Insurance amount is over the limit");
+        require(msg.value >= amountToPaid, "Not enough ether to pay");
+        uint256 amountToReturn = msg.value - amountToPaid;
+        flightSuretyData.buyInsurance.value(amountToPaid)(passenger, flightKey, amountToPaid);
+        msg.sender.transfer(amountToReturn);
+    }
+
+    function checkInsuranceAmount(address airline,  string flightCode, uint256 timestamp) external view returns(uint256){
+        bytes32 flightKey = getFlightKey(airline, flightCode,  timestamp);
+        return flightSuretyData.checkInsuranceAmount(flightKey, msg.sender);
+    }
+
     // Register an oracle with the contract
     function registerOracle() external payable {
         // Require registration fee
@@ -349,6 +376,7 @@ contract FlightSuretyApp {
 contract FlightSuretyData {
     // -- Airline
     function registerAirline(address newAirline, address callerAirline) external;
+    function checkAirlineIsRegisterd(address airlineAddress) external view returns(bool);
     function voteForNewAirline(address newAirlineAddress, address callerAirline) external returns(uint256 votes);
     function getRegisteredAirlineCount() external view returns(uint256 count);
     function airlinePaidFunding(address callerAirline) external payable;
@@ -356,5 +384,6 @@ contract FlightSuretyData {
     function registerFlight(string flightCode, uint256 timestamp, address callerAirline) external;
     function checkIsFlight(bytes32 flightKey) external view returns(bool);
     // -- Insurance
-    function buyInsurance(address passenger, bytes32 flightKey, uint256 amountToPaid) external;
+    function buyInsurance(address passenger, bytes32 flightKey, uint256 amountToPaid) external payable;
+    function checkInsuranceAmount(bytes32 flightKey, address callerPassenger)external view returns(uint256);
 }
