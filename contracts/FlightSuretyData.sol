@@ -36,6 +36,7 @@ contract FlightSuretyData {
 
     struct Passenger {
         bool isPassenger;
+        uint256 balance;
         mapping(bytes32 => Insurance) insurances;
     }
 
@@ -55,6 +56,7 @@ contract FlightSuretyData {
     mapping(address => Passenger) private passengers;
 
     uint256 private airlineBalance = 0;
+    uint256 private insuranceBalance = 0;
 
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
@@ -169,7 +171,7 @@ contract FlightSuretyData {
         delete authorizedContracts[caller];
     }
 
-    // ---  Airline
+    // --  Airline
 
     /**
     * @dev Add an airline to the registration queue
@@ -190,30 +192,6 @@ contract FlightSuretyData {
         registeringAirlines[airlineAddressToVote] = registeringAirlines[airlineAddressToVote].add(1);
 
         votes = registeringAirlines[airlineAddressToVote];
-    }
-
-    // -- Flight
-    function getFlightKey(address airline, string flightCode, uint256 timestamp) external view
-    requireAuthorizeContracts requireIsOperational
-    returns(bytes32)
-    {
-        return _getFlightKey(airline, flightCode, timestamp);
-    }
-
-    function getFlightStatus(address airline, string flightCode, uint256 timestamp) external view
-    requireAuthorizeContracts requireIsOperational returns(uint8)
-    {
-        bytes32 flightKey = _getFlightKey(airline, flightCode, timestamp);
-        require(_existFlight(flightKey), "Is not a valid flight");
-        return flights[flightKey].statusCode;
-    }
-
-    //  -- Insurance
-    function getInsuranceKey(address passenger, bytes32 flightKey) external view
-    requireAuthorizeContracts requireIsOperational
-    returns(bytes32)
-    {
-        return _getInsuranceKey(passenger, flightKey);
     }
 
     // -- Getter
@@ -239,6 +217,10 @@ contract FlightSuretyData {
     function checkAirlineBalance() external view requireAuthorizeContracts requireIsOperational returns(uint256) {
         return airlineBalance;
     }
+ 
+    function checkInsuranceBalance() external view requireAuthorizeContracts requireIsOperational returns(uint256) {
+        return insuranceBalance;
+    }
 
     function checkIsFlight(bytes32 flightKey) external view requireAuthorizeContracts requireIsOperational returns(bool) {
         return _existFlight(flightKey);
@@ -253,15 +235,38 @@ contract FlightSuretyData {
         airlines[callerAirline].hasPaidFund = true;
     }
 
-    // ---  Insurance
+    // -- Passenger
+    function getPassengerBalance(address callerAddress)
+    external view requireIsOperational requireAuthorizeContracts isPassenger(callerAddress)
+    returns(uint256)
+    {
+        return passengers[callerAddress].balance;
+    }
+
+    // -- Insurance
+
+    function getInsuranceKey(address passenger, bytes32 flightKey) external view
+    requireAuthorizeContracts requireIsOperational
+    returns(bytes32)
+    {
+        return _getInsuranceKey(passenger, flightKey);
+    }
+
+    function addInsuranceBalance(address callerAddress) external payable
+    requireAuthorizeContracts requireIsOperational isAirline(callerAddress) payableIsPositiveValue(msg.value)
+    {
+        insuranceBalance = insuranceBalance.add(msg.value);
+    }
 
     // Function: buy insurance
     function buyInsurance(address passenger, bytes32 flightKey, uint256 amountToPaid)
-    external payable requireAuthorizeContracts requireIsOperational
+    external payable requireAuthorizeContracts requireIsOperational payableIsPositiveValue(msg.value)
     {
         bytes32 insuranceKey = _getInsuranceKey(passenger, flightKey);
         require(passengers[passenger].insurances[insuranceKey].isInsurance == false, "Cannot buy same insurance twice");
         passengers[passenger].isPassenger = true;
+        passengers[passenger].balance = 0;
+        insuranceBalance = insuranceBalance.add(msg.value);
         passengers[passenger].insurances[insuranceKey] = Insurance({
             isInsurance: true,
             flightKey: flightKey,
@@ -279,11 +284,37 @@ contract FlightSuretyData {
         return passengers[callerPassenger].insurances[insuranceKey].value;
     }
 
-    // Function: repayment to passengers who bought insurance
+    // Function: payout to passengers who bought insurance
+    function insurancePayout(
+        bytes32 flightKey,
+        uint256 payoutRate,
+        address callerPassenger)
+    external
+    requireAuthorizeContracts requireIsOperational isPassenger(callerPassenger)
+    {
+        bytes32 insuranceKey = _getInsuranceKey(callerPassenger, flightKey);
+        require(passengers[callerPassenger].insurances[insuranceKey].isInsurance == true, "Cannot buy same insurance twice");
+        uint256 payout = passengers[callerPassenger].insurances[insuranceKey].value.mul(payoutRate).div(100);
+        require(insuranceBalance >= payout, "Not enoguth insurance balance");
+        insuranceBalance = insuranceBalance.sub(payout);
+        passengers[callerPassenger].balance = passengers[callerPassenger].balance.add(payout);
+    }
 
     // Function: passenger withdraw insurance payout
 
     // -- Flight
+
+    function getFlightKey(
+        address airline,
+        string flightCode,
+        uint256 timestamp
+     ) external view
+    requireAuthorizeContracts requireIsOperational
+    returns(bytes32)
+    {
+        return _getFlightKey(airline, flightCode, timestamp);
+    }
+
     function registerFlight(string flightCode, uint256 timestamp, address callerAirline)
     external requireAuthorizeContracts requireIsOperational isAirline(callerAirline)
     {
@@ -308,6 +339,18 @@ contract FlightSuretyData {
         bytes32 flightKey = _getFlightKey(callerAirline, flightCode, timestamp);
         require(_existFlight(flightKey), "Flight not exist");
         flights[flightKey].statusCode = statusCode;
+    }
+
+    function getFlightStatus(
+        address airlineAddress,
+        string flightCode,
+        uint256 timestamp
+    )
+    external view requireAuthorizeContracts requireIsOperational returns(uint8)
+    {
+        bytes32 flightKey = _getFlightKey(airlineAddress, flightCode, timestamp);
+        require(_existFlight(flightKey), "Flight not exist");
+        return flights[flightKey].statusCode;
     }
 
     /********************************************************************************************/
@@ -352,7 +395,7 @@ contract FlightSuretyData {
     /*                                        PRIVATE FUNCTIONS                                */
     /********************************************************************************************/
 
-    // --- Airline
+    // -- Airline
     function _airlineIsRegistered(address airlineAddress) private view requireIsOperational returns(bool) {
         return (airlines[airlineAddress].isRegistered);
     }
@@ -379,9 +422,17 @@ contract FlightSuretyData {
         registeringAirlines[airlineAddressToVote] = 0;
     }
 
-    // --- flight
+    // -- flight
     function _existFlight(bytes32 flightKey) private view requireIsOperational returns(bool){
         return flights[flightKey].isFlight;
+    }
+
+    function _getFlightStatus(address airline, string flightCode, uint256 timestamp) private view
+    requireIsOperational returns(uint8)
+    {
+        bytes32 flightKey = _getFlightKey(airline, flightCode, timestamp);
+        require(_existFlight(flightKey), "Is not a valid flight");
+        return flights[flightKey].statusCode;
     }
 
     // -- Passenger

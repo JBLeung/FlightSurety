@@ -218,7 +218,7 @@ contract('Flight Surety Tests', async (accounts) => {
 
   it('(flight) register a flight', async () => {
     // ARRANGE
-    const {flightCode, timestamp, airlineAddress} = flightDataArray[0]
+    const {airlineAddress, flightCode, timestamp} = flightDataArray[0]
     // ACT
     const flightKey = await config.flightSuretyData.getFlightKey(airlineAddress, flightCode, timestamp, {from: contractAddress})
     const beforeFlightRegistered = await config.flightSuretyData.checkIsFlight(flightKey, {from: contractAddress})
@@ -231,21 +231,37 @@ contract('Flight Surety Tests', async (accounts) => {
 
   it('(insurance) buy Insurance', async () => {
     // ARRANGE
-    const {flightCode, timestamp, airlineAddress} = flightDataArray[0]
+    const {airlineAddress, flightCode, timestamp} = flightDataArray[0]
     const passengerAddress = passengerAddresses[0]
     const amountToPaid = web3.utils.toWei('1', 'ether')
     // ACT
+    const insuranceBalanceBeforeBuyInsurance = await config.flightSuretyData.checkInsuranceBalance({from: contractAddress})
     await config.flightSuretyApp.buyInsurance(passengerAddress, airlineAddress, flightCode, timestamp, amountToPaid, {from: passengerAddress, value: amountToPaid})
     const insuranceAmmount = await config.flightSuretyApp.checkInsuranceAmount(airlineAddress, flightCode, timestamp, {from: passengerAddress})
+    const insuranceBalanceAfterBuyInsurance = await config.flightSuretyData.checkInsuranceBalance({from: contractAddress})
 
     // ASSERT
-    assert.equal(web3.utils.fromWei(insuranceAmmount, 'ether') > 0, true, 'Passanger insurance amount is less then 0')
+    assert.equal(web3.utils.fromWei(insuranceBalanceBeforeBuyInsurance, 'ether'), 0, 'Passanger insurance amount is less then 0')
+    assert.equal(insuranceAmmount, amountToPaid, 'Passanger insurance amount is less then 0')
+    assert.equal(insuranceBalanceAfterBuyInsurance, amountToPaid, 'Passanger insurance amount is less then 0')
+  })
+
+  it('(insurance) add insurance balance', async () => {
+    // ARRANGE
+    // ACT
+    // airlineAddresses
+    const insuranceBalanceBeforeAddInsurance = await config.flightSuretyData.checkInsuranceBalance({from: contractAddress})
+    await config.flightSuretyApp.addInsuranceBalance(web3.utils.toWei('1', 'ether'), {from: airlineAddresses[0], value: web3.utils.toWei('2', 'ether')})
+    const insuranceBalanceAfterAddInsurance = await config.flightSuretyData.checkInsuranceBalance({from: contractAddress})
+    // ASSERT
+    assert.notEqual(insuranceBalanceBeforeAddInsurance, insuranceBalanceAfterAddInsurance, 'Cannot add insurance balance')
+    assert.equal(web3.utils.fromWei(insuranceBalanceAfterAddInsurance, 'ether'), 2, 'Cannot add insurance balance')
   })
 
   it('(flight) update flight status to delay', async () => {
     // ARRANGE
     const flightDelayStatusCode = 2
-    const {flightCode, timestamp, airlineAddress} = flightDataArray[0]
+    const {airlineAddress, flightCode, timestamp} = flightDataArray[0]
 
     // ACT
     const flightStatusBeforeUpdate = await config.flightSuretyData.getFlightStatus(airlineAddress, flightCode, timestamp, {from: contractAddress})
@@ -257,11 +273,24 @@ contract('Flight Surety Tests', async (accounts) => {
     assert.equal(updatedFlightStatus, flightDelayStatusCode, 'Status should be flightDelayStatusCode')
   })
 
-  // it('(insurance) passenger receives credit of insurance payout', async () => {
-  //   // ARRANGE
-  //   // ACT
-  //   // ASSERT
-  // })
+  it('(insurance) passenger receives credit of insurance payout', async () => {
+    // ARRANGE
+    const flightDelayStatusCode = 2
+    const {airlineAddress, flightCode, timestamp} = flightDataArray[0]
+    const passengerAddress = passengerAddresses[0]
+
+    // ACT
+    const flightStatus = await config.flightSuretyData.getFlightStatus(airlineAddress, flightCode, timestamp, {from: contractAddress})
+    const insuranceAmmount = await config.flightSuretyApp.checkInsuranceAmount(airlineAddress, flightCode, timestamp, {from: passengerAddress})
+    const passangerBalanceBefore = await config.flightSuretyData.getPassengerBalance(passengerAddress, {from: contractAddress})
+    await config.flightSuretyApp.insurancePayout(airlineAddress, flightCode, timestamp, {from: passengerAddress})
+    const passangerBalanceAfter = await config.flightSuretyData.getPassengerBalance(passengerAddress, {from: contractAddress})
+
+    // ASSERT
+    assert.equal(flightStatus, flightDelayStatusCode, 'Status should be flightDelayStatusCode')
+    assert.equal(passangerBalanceBefore, 0, 'Passanger should be 0 at the beginning')
+    assert.equal(passangerBalanceAfter, insuranceAmmount * 1.5, 'Status should be flightDelayStatusCode')
+  })
 
   // it('(insurance) passenger withdraw funds', async () => {
   //   // ARRANGE

@@ -25,6 +25,7 @@ contract FlightSuretyApp {
     uint8 constant MULTI_PART_CONSENSUS_RATE = 2;
     uint constant JOIN_FEE = 10 ether;
     uint constant MAX_INSURANCE_AMOUNT = 1 ether;
+    uint constant PAYOUT_RATE = 150;
 
     // Flight status codees
     enum FlightStatusCode {
@@ -215,6 +216,12 @@ contract FlightSuretyApp {
     }
 
     // -- Insurance
+    function addInsuranceBalance(uint256 addValue) external payable {
+        uint256 amountToReturn = msg.value - addValue;
+        flightSuretyData.addInsuranceBalance.value(addValue)(msg.sender);
+        msg.sender.transfer(amountToReturn);
+    }
+
     function buyInsurance(
         address passenger,
         address airline,
@@ -239,6 +246,21 @@ contract FlightSuretyApp {
         bytes32 flightKey = getFlightKey(airline, flightCode,  timestamp);
         return flightSuretyData.checkInsuranceAmount(flightKey, msg.sender);
     }
+
+    function insurancePayout(
+        address airline,
+        string flightCode,
+        uint256 timestamp) external
+    {
+        bytes32 flightKey = getFlightKey(airline, flightCode,  timestamp);
+        // check flight state
+        uint8 flightStatus = flightSuretyData.getFlightStatus(airline, flightCode, timestamp);
+        require(flightStatus == 2, "Flight Status not appect for payout");
+        // payout
+        flightSuretyData.insurancePayout(flightKey, PAYOUT_RATE, msg.sender);
+    }
+
+    // -- Oracle
 
     // Register an oracle with the contract
     function registerOracle() external payable {
@@ -401,7 +423,20 @@ contract FlightSuretyData {
         uint8 statusCode,
         address callerAirline) external;
 
+    function getFlightStatus(
+        address airlineAddress,
+        string flightCode,
+        uint256 timestamp) external returns(uint8);
+
     // -- Insurance
+    function addInsuranceBalance(address callerAddress) external payable;
     function buyInsurance(address passenger, bytes32 flightKey, uint256 amountToPaid) external payable;
     function checkInsuranceAmount(bytes32 flightKey, address callerPassenger)external view returns(uint256);
+    function insurancePayout(
+        bytes32 flightKey,
+        uint256 payoutRate,
+        address callerPassenger) external;
+
+    // -- Passenger
+    function getPassengerBalance(address callerAddress) external view returns(uint256);
 }
