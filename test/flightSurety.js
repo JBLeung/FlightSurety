@@ -296,8 +296,6 @@ contract('Flight Surety Tests', async (accounts) => {
     // ARRANGE
     const passengerAddress = passengerAddresses[0]
     const currentBalance = await web3.eth.getBalance(passengerAddress)
-    const appBalance = await web3.eth.getBalance(contractAddress)
-    const dataBalance = await web3.eth.getBalance(contractOwnerAddress)
     const withdrawAmount = web3.utils.toWei('1', 'ether')
     // ACT
     await config.flightSuretyApp.withdrawPassengerBalance(withdrawAmount, {from: passengerAddress})
