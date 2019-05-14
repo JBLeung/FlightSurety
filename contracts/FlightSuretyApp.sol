@@ -260,6 +260,10 @@ contract FlightSuretyApp {
         flightSuretyData.insurancePayout(flightKey, PAYOUT_RATE, msg.sender);
     }
 
+    function withdrawPassengerBalance(uint256 withdrawAmount) external payable {
+        flightSuretyData.withdrawPassengerBalance(withdrawAmount, msg.sender);
+    }
+
     // -- Oracle
 
     // Register an oracle with the contract
@@ -439,4 +443,5 @@ contract FlightSuretyData {
 
     // -- Passenger
     function getPassengerBalance(address callerAddress) external view returns(uint256);
+    function withdrawPassengerBalance(uint256 withdrawAmount, address callerPassenger) external payable;
 }

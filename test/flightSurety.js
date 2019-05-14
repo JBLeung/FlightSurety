@@ -292,11 +292,19 @@ contract('Flight Surety Tests', async (accounts) => {
     assert.equal(passangerBalanceAfter, insuranceAmmount * 1.5, 'Status should be flightDelayStatusCode')
   })
 
-  // it('(insurance) passenger withdraw funds', async () => {
-  //   // ARRANGE
-  //   // ACT
-  //   // ASSERT
-  // })
+  it('(insurance) passenger withdraw funds', async () => {
+    // ARRANGE
+    const passengerAddress = passengerAddresses[0]
+    const currentBalance = await web3.eth.getBalance(passengerAddress)
+    const appBalance = await web3.eth.getBalance(contractAddress)
+    const dataBalance = await web3.eth.getBalance(contractOwnerAddress)
+    const withdrawAmount = web3.utils.toWei('1', 'ether')
+    // ACT
+    await config.flightSuretyApp.withdrawPassengerBalance(withdrawAmount, {from: passengerAddress})
+    const afterBalance = await web3.eth.getBalance(passengerAddress)
+    // ASSERT
+    assert.equal(afterBalance >= currentBalance, true, 'Withdraw fail')
+  })
 
 
   // it('', async () => {

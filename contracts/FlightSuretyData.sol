@@ -243,6 +243,16 @@ contract FlightSuretyData {
         return passengers[callerAddress].balance;
     }
 
+    // Function: passenger withdraw insurance payout
+    function withdrawPassengerBalance(uint256 withdrawAmount, address callerPassenger)
+    external payable
+    requireAuthorizeContracts requireIsOperational isPassenger(callerPassenger)
+    {
+        require(passengers[callerPassenger].balance >= withdrawAmount, "Not enoguth passanger balance");
+        passengers[callerPassenger].balance = passengers[callerPassenger].balance.sub(withdrawAmount);
+        callerPassenger.transfer(withdrawAmount);
+    }
+
     // -- Insurance
 
     function getInsuranceKey(address passenger, bytes32 flightKey) external view
@@ -299,8 +309,6 @@ contract FlightSuretyData {
         insuranceBalance = insuranceBalance.sub(payout);
         passengers[callerPassenger].balance = passengers[callerPassenger].balance.add(payout);
     }
-
-    // Function: passenger withdraw insurance payout
 
     // -- Flight
 
